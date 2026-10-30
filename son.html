@@ -21,18 +21,27 @@ const W=800,H=540,GW=640,BOSS_HP=2000,MAX_HP=60,PANEL_X=652,PANEL_Y=44,ROW=54;
 const NAMES=["POWER","SPEED","ARMOR","AIM"];
 const MSGS=["fite me","mason?","mason!","mason!!","mason!!!"];
 let bossImg,BW,BH,bx=GW/2,by=125,g,state="title",st=0,ji=0;
+function preload() {
+  bossImg = loadImage("mason.png");
+}
 
-function preload(){bossImg=loadImage("C:\Users\Compsci\Downloads\minigames-main\mason.png")}
-
-function setup(){
+function setup() {
   pixelDensity(1);
-  createCanvas(W,H).parent("stage");
+  createCanvas(W, H).parent("stage");
   noSmooth();
   imageMode(CENTER);
   strokeJoin(ROUND);
   textFont("Comic Sans MS, Comic Sans, cursive");
-  BW=250;
-  BH=BW*bossImg.height/bossImg.width;
+
+  if (bossImg && bossImg.width > 0) {
+    BW = 250;
+    BH = BW * bossImg.height / bossImg.width;
+  } else {
+    console.error("Boss image failed to load");
+    BW = 250;
+    BH = 250;
+  }
+
   reset();
 }
 
