@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mini-Game #4: Boss Fight</title>
+<style>
+:root{--bg:#c0c0c0;--fg:#000;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#2b2b2b;--fg:#eee}}
+:root[data-theme="dark"]{--bg:#2b2b2b;--fg:#eee}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--fg)}
+body{display:flex;justify-content:center;align-items:center}
+canvas{display:block;max-width:100%;height:auto!important;border:3px solid #000;background:#fff;image-rendering:pixelated}
+</style>
+</head>
+<body>
+<main id="stage"></main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+<script>
+const W=800,H=540,GW=640,BOSS_HP=2000,MAX_HP=60,PANEL_X=652,PANEL_Y=44,ROW=54;
+const NAMES=["POWER","SPEED","ARMOR","AIM"];
+const MSGS=["fite me","mason?","mason!","mason!!","mason!!!"];
+let bossImg,BW,BH,bx=GW/2,by=125,g,state="title",st=0,ji=0;
+
+function preload(){bossImg=loadImage("C:\Users\Compsci\Downloads\minigames-main\mason.png")}
+
+function setup(){
+  pixelDensity(1);
+  createCanvas(W,H).parent("stage");
+  noSmooth();
+  imageMode(CENTER);
+  strokeJoin(ROUND);
+  textFont("Comic Sans MS, Comic Sans, cursive");
+  BW=250;
+  BH=BW*bossImg.height/bossImg.width;
+  reset();
+}
+
+function reset(){
+  g={hp:MAX_HP,bossHp:BOSS_HP,stage:0,stats:[100,100,100,100],p:{x:GW/2,y:450,inv:0,sel:0},
+    bullets:[],shots:[],items:[],t:0,cool:0,atk:90,itemT:200,msg:MSGS[0],msgT:90,hit:0,on:false,fix:false};
+}
+
+function begin(){reset();state="play";st=0}
+
+function jit(i,a){const s=Math.sin(i*127.1+Math.floor(frameCount/7)*311.7)*43758.5453;return(s-Math.floor(s)-.5)*a}
+function J(a){return jit(ji++,a)}
+function wl(x1,y1,x2,y2,a=2){line(x1+J(a),y1+J(a),x2+J(a),y2+J(a))}
+function wr(x,y,w,h,a=2){beginShape();vertex(x+J(a),y+J(a));vertex(x+w+J(a),y+J(a));vertex(x+w+J(a),y+h+J(a));vertex(x+J(a),y+h+J(a));endShape(CLOSE)}
+function wc(x,y,r,a=2){beginShape();for(let i=0;i<12;i++){const t=i/12*TWO_PI;vertex(x+cos(t)*r+J(a),y+sin(t)*r+J(a))}endShape(CLOSE)}
+
+function statCol(v){return v>80?"#22b14c":v>60?"#b5e61d":v>40?"#fff200":v>20?"#ff7f27":"#ed1c24"}
+
+function draw(){
+  ji=0;st++;
+  background(255);
+  if(state=="title"){title();return}
+  if(state=="play")update();
+  render();
+  if(state!="play")overlay();
+}
+
+function fire(a,v){g.bullets.push({x:bx,y:by+40,vx:cos(a)*v,vy:sin(a)*v})}
+
+function bossAct(){
+  if(--g.atk>0)return;
+  const s=g.stage,a=atan2(g.p.y-by-40,g.p.x-bx);
+  if(s==0){fire(a,3);g.atk=50}
+  else if(s==1){for(let i=-1;i<2;i++)fire(a+i*.28,3.2);g.atk=65}
+  else if(s==2){for(let i=0;i<12;i++)fire(TWO_PI*i/12+g.t*.02,2.6);g.atk=75}
+  else if(s==3){for(let i=-2;i<3;i++)fire(a+i*.22,3.5);fire(a,4.5);g.atk=50}
+  else{for(let i=0;i<10;i++)fire(TWO_PI*i/10+g.t*.05,2.8);fire(a,4.2);g.atk=34}
+}
+
+function hurt(){
+  g.hp-=4+16*(1-g.stats[2]/100);
+  g.p.inv=45;
+  if(g.hp<=0){state="lose";st=0}
+}
+
+function update(){
+  const p=g.p,s=g.stats;
+  g.t++;
+  const sp=1.2+s[1]*.04;
+  const dx=(keyIsDown(68)||keyIsDown(RIGHT_ARROW))-(keyIsDown(65)||keyIsDown(LEFT_ARROW));
+  const dy=(keyIsDown(83)||keyIsDown(DOWN_ARROW))-(keyIsDown(87)||keyIsDown(UP_ARROW));
+  const m=Math.hypot(dx,dy)||1;
+  p.x=constrain(p.x+dx/m*sp,14,GW-14);
+  p.y=constrain(p.y+dy/m*sp,40,H-26);
+  p.inv=max(0,p.inv-1);
+  g.hit=max(0,g.hit-1);
+  bx=GW/2+sin(g.t*.012)*150+(g.hit?random(-3,3):0);
+  by=125+sin(g.t*.05)*10;
+
+  if(--g.itemT<=0){
+    if(g.items.length<2)g.items.push({x:random(40,GW-40),y:random(280,H-40),charge:60,life:600});
+    g.itemT=300;
+  }
+  g.items.forEach(i=>i.life--);
+  g.items=g.items.filter(i=>i.life>0&&i.charge>1);
+
+  const on=g.items.find(i=>dist(i.x,i.y,p.x,p.y)<30);
+  if(on&&!g.on)p.sel=s.indexOf(Math.min(...s));
+  g.on=!!on;
+  g.fix=false;
+  if(on&&keyIsDown(69)&&s[p.sel]<100){
+    const a=min(.6,on.charge,100-s[p.sel]);
+    s[p.sel]+=a;
+    on.charge-=a;
+    g.fix=true;
+  }
+
+  g.cool--;
+  const click=mouseIsPressed&&mouseX<GW;
+  if((click||keyIsDown(32))&&g.cool<=0&&!g.fix){
+    let a=click?atan2(mouseY-p.y,mouseX-p.x):atan2(by-p.y,bx-p.x);
+    a+=random(-1,1)*(100-s[3])/100*.7;
+    g.shots.push({x:p.x,y:p.y,vx:cos(a)*9,vy:sin(a)*9});
+    g.cool=10;
+  }
+
+  const dmg=1+s[0]*.09;
+  g.shots=g.shots.filter(b=>{
+    b.x+=b.vx;b.y+=b.vy;
+    if(abs(b.x-bx)<BW*.35&&abs(b.y-by)<BH*.5){g.bossHp-=dmg;g.hit=5;return false}
+    return b.x>-10&&b.x<GW+10&&b.y>-10&&b.y<H+10;
+  });
+
+  const ns=min(4,floor((BOSS_HP-g.bossHp)/(BOSS_HP/5)));
+  if(ns>g.stage){
+    g.stage=ns;
+    for(let i=0;i<4;i++)s[i]=max(5,s[i]-25);
+    g.msg=MSGS[ns];g.msgT=120;g.atk=70;g.bullets=[];
+  }
+  if(g.bossHp<=0){state="win";st=0;return}
+
+  bossAct();
+  g.bullets=g.bullets.filter(b=>{
+    b.x+=b.vx;b.y+=b.vy;
+    if(p.inv<=0&&dist(b.x,b.y,p.x,p.y)<18){hurt();return false}
+    return b.x>-20&&b.x<GW+20&&b.y>-20&&b.y<H+20;
+  });
+  if(p.inv<=0&&abs(p.x-bx)<BW*.3&&abs(p.y-by)<BH*.45)hurt();
+  g.msgT--;
+}
+
+function drawItem(i){
+  if(i.life<150&&frameCount%20<10)return;
+  stroke(0);strokeWeight(3);fill("#fff200");
+  wr(i.x-16,i.y-16,32,32);
+  noStroke();fill(0);textAlign(CENTER,CENTER);textSize(26);
+  text("?",i.x,i.y+1);
+  if(dist(i.x,i.y,g.p.x,g.p.y)<30){noFill();stroke("#22b14c");strokeWeight(3);wc(i.x,i.y,26)}
+}
+
+function drawPlayer(){
+  const{x,y}=g.p;
+  if(g.p.inv>0&&frameCount%8<4)return;
+  stroke(0);strokeWeight(3);fill("#ffc90e");
+  wc(x,y-16,9);
+  stroke("#00a2e8");
+  wl(x,y-7,x,y+10);wl(x,y-2,x-11,y+5);wl(x,y-2,x+11,y+5);
+  wl(x,y+10,x-8,y+22);wl(x,y+10,x+8,y+22);
+  noStroke();fill(0);
+  circle(x-3,y-17,3);circle(x+3,y-17,3);
+}
+
+function panel(){
+  const x=PANEL_X,y=PANEL_Y,w=138,by0=y+ROW*4;
+  noStroke();fill(0);textAlign(CENTER,BASELINE);textSize(24);
+  text("Stats n stuf",x+w/2,y-12);
+  stroke(0);strokeWeight(2);fill(255);wr(x,y,w,ROW*4,1);
+  for(let i=0;i<4;i++){
+    const ry=y+i*ROW,v=g.stats[i];
+    stroke(0);strokeWeight(2);fill(statCol(v));
+    wr(x+w-48,ry+3,44,ROW-6,1);
+    if(i)wl(x,ry,x+w-48,ry,1.5);
+    if(v<=25&&frameCount%30<15){noFill();stroke("#ed1c24");strokeWeight(3);wr(x+w-48,ry+3,44,ROW-6,1)}
+    noStroke();fill(0);
+    textAlign(LEFT,CENTER);textSize(14);text((i+1)+" "+NAMES[i],x+6,ry+ROW/2);
+    textAlign(CENTER,CENTER);textSize(16);text(round(g.stats[i]),x+w-26,ry+ROW/2);
+  }
+  noFill();stroke("#3f48cc");strokeWeight(4);
+  wr(x-2,y+g.p.sel*ROW,w+4,ROW,1);
+
+  noStroke();fill(0);textAlign(LEFT,BASELINE);textSize(18);
+  text("HP",x,by0+36);
+  stroke(0);strokeWeight(2);fill(255);wr(x+34,by0+20,w-34,18,1);
+  noStroke();fill("#22b14c");rect(x+36,by0+22,(w-38)*max(0,g.hp)/MAX_HP,14);
+  fill(0);textSize(18);text("stage "+(g.stage+1)+"/5",x,by0+64);
+  textSize(13);
+  ["WASD = move","click / SPACE = shoot","stand on ? box","1-4 = pick stat","hold E = fix it"].forEach((l,i)=>text(l,x,by0+90+i*18));
+}
+
+function render(){
+  g.items.forEach(drawItem);
+  image(bossImg,bx,by,BW,BH);
+  if(g.hit){noStroke();fill("#ed1c24");textAlign(CENTER,CENTER);textSize(28);text("OW",bx+BW*.42,by-BH*.4)}
+
+  stroke(0);strokeWeight(2);fill("#ed1c24");
+  g.bullets.forEach(b=>wc(b.x,b.y,7,1.5));
+  stroke(0);strokeWeight(1);fill("#3f48cc");
+  g.shots.forEach(b=>wc(b.x,b.y,4,1));
+  drawPlayer();
+
+  if(g.on){
+    noStroke();fill(0);textAlign(CENTER,CENTER);textSize(16);
+    text(g.fix?"fixing "+NAMES[g.p.sel]+"...":"hold E (1-4 pick)",g.p.x,g.p.y-42);
+  }
+  if(g.msgT>0&&state=="play"){
+    noStroke();fill("#ed1c24");textAlign(CENTER,CENTER);textSize(34);
+    text(g.msg,GW/2+J(3),275+J(3));
+  }
+
+  noStroke();fill(0);textAlign(LEFT,CENTER);textSize(18);
+  text("BOSS",8,22);
+  stroke(0);strokeWeight(2);fill(255);wr(64,12,566,20,1);
+  noStroke();fill("#ed1c24");rect(66,14,562*max(0,g.bossHp)/BOSS_HP,16);
+
+  stroke(0);strokeWeight(2);
+  wl(GW+4,0,GW+4,H,1);
+  panel();
+}
+
+function title(){
+  image(bossImg,W/2,215,BW,BH);
+  noStroke();fill(0);textAlign(CENTER,CENTER);
+  textSize(54);text("BOSS FIGHT",W/2+J(2),55+J(2));
+  textSize(20);text("Mini-Game #4",W/2,98);
+  textSize(22);
+  text("ur stats drop every stage",W/2,335);
+  text("stand on a ? box and hold E to fix them",W/2,367);
+  text("WASD move / click or SPACE shoot / 1-4 pick stat",W/2,399);
+  if(frameCount%60<40){fill("#ed1c24");textSize(30);text("click to start",W/2,460)}
+}
+
+function overlay(){
+  noStroke();fill(255,255,255,210);rect(0,0,W,H);
+  fill(state=="win"?"#22b14c":"#ed1c24");
+  textAlign(CENTER,CENTER);textSize(64);
+  text(state=="win"?"u win!!1":"u died lol",W/2+J(3),H/2-20+J(3));
+  fill(0);textSize(22);text("click or R to retry",W/2,H/2+40);
+}
+
+function mousePressed(){
+  if(state!="play"){if(st>30)begin();return}
+  if(mouseX>PANEL_X-2&&mouseY>PANEL_Y&&mouseY<PANEL_Y+ROW*4)g.p.sel=constrain(floor((mouseY-PANEL_Y)/ROW),0,3);
+}
+
+function keyPressed(){
+  if(state=="play"&&key>="1"&&key<="4")g.p.sel=int(key)-1;
+  if(state!="play"&&st>30&&(key=="r"||key=="R"||keyCode==ENTER||keyCode==32))begin();
+  if([32,37,38,39,40].includes(keyCode))return false;
+}
+</script>
+</body>
+</html>
