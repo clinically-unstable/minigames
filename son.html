@@ -112,7 +112,7 @@ function update(){
   if(on&&!g.on)p.sel=s.indexOf(Math.min(...s));
   g.on=!!on;
   g.fix=false;
-  if(on&&keyIsDown(69)&&s[p.sel]<100){
+  if(on&&s[p.sel]<100){
     const a=min(.6,on.charge,100-s[p.sel]);
     s[p.sel]+=a;
     on.charge-=a;
@@ -198,7 +198,7 @@ function panel(){
   noStroke();fill("#22b14c");rect(x+36,by0+22,(w-38)*max(0,g.hp)/MAX_HP,14);
   fill(0);textSize(18);text("stage "+(g.stage+1)+"/5",x,by0+64);
   textSize(13);
-  ["WASD = move","click / SPACE = shoot","stand on ? box","1-4 = pick stat","hold E = fix it"].forEach((l,i)=>text(l,x,by0+90+i*18));
+  ["WASD = move","click / SPACE = shoot","stand on ? box","1-4 = pick stat","auto fix while on it"].forEach((l,i)=>text(l,x,by0+90+i*18));
 }
 
 function render(){
@@ -214,7 +214,7 @@ function render(){
 
   if(g.on){
     noStroke();fill(0);textAlign(CENTER,CENTER);textSize(16);
-    text(g.fix?"fixing "+NAMES[g.p.sel]+"...":"hold E (1-4 pick)",g.p.x,g.p.y-42);
+    text(g.fix?"fixing "+NAMES[g.p.sel]+"...":"stand on the ? box to auto-fix",g.p.x,g.p.y-42);
   }
   if(g.msgT>0&&state=="play"){
     noStroke();fill("#ed1c24");textAlign(CENTER,CENTER);textSize(34);
@@ -238,7 +238,7 @@ function title(){
   textSize(20);text("Mini-Game #4",W/2,98);
   textSize(22);
   text("ur stats drop every stage",W/2,335);
-  text("stand on a ? box and hold E to fix them",W/2,367);
+  text("stand on a ? box to auto-fix the selected stat",W/2,367);
   text("WASD move / click or SPACE shoot / 1-4 pick stat",W/2,399);
   if(frameCount%60<40){fill("#ed1c24");textSize(30);text("click to start",W/2,460)}
 }
