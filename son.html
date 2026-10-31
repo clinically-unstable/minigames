@@ -18,6 +18,7 @@ canvas{display:block;width:min(96vw,calc(96vh*800/540))!important;height:auto!im
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
 <script>
 const W=800,H=540,GW=640,BOSS_HP=2000,MAX_HP=60,PANEL_X=652,PANEL_Y=44,ROW=54;
+const eff=()=>max(5,100-g.deg);
 const DL_T=300,DL_UP=10,DL_HEAL=10,FLIP_T=300; 
 const MSGS=["fite me","good job","uhh","vertical difficulty spike?","yikes"];
 const SEQ=[ 
