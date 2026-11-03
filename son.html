@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Mini-Game #4: Boss Fight</title>
 <style>
 :root{--bg:#c0c0c0;--fg:#000;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -17,13 +17,13 @@ canvas{display:block;width:min(96vw,calc(96vh*800/540))!important;height:auto!im
 <main id="stage"></main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
 <script>
-const W=800,H=540,GW=640,BOSS_HP=3000,MAX_HP=125,PANEL_X=652,PANEL_Y=44,ROW=54;
+const W=800,H=540,GW=640,BOSS_HP=3000,MAX_HP=150,PANEL_X=652,PANEL_Y=44,ROW=54;
 const eff=()=>max(5,100-g.deg);
 let DL_T=300;const DL_UP=10,DL_HEAL=10,FLIP_T=300,FLIP_CD=300;
-const BUFF={2:"+25% dmg",4:"longer i-frames",6:"faster updates",8:"faster shooting",10:"+30% heal",13:"-25% decay"};
+const BUFF={2:"+25% dmg",4:"longer i-frames",6:"faster updates, -upd CD",8:"faster shooting",10:"+30% heal",13:"-25% decay"};
 const vn=v=>(1+Math.floor(v/10))+"."+v%10;
 const FINAL_HEAL=.6;
-const MSGS=["fight me","good job","uhh","yikes","vertical difficulty spike"];
+const MSGS=["fight me","good job","this is how puter viruses work btw","give mason a compliment","vertical difficulty spike"];
 const BMSGS=["hi hi!","yay you did it","oopsie","tummy time?","almost bedtime"];
 const SEQ=[
   ["aim","spread","gun","rain"],
@@ -89,8 +89,9 @@ function draw(){
     text(bossErr?"can't find mason.png - keep it next to son.html":"loading...",W/2,H/2);return}
   background(255);
   if(state=="title"){title();return}
-  if(state=="play")update();
+  if(state=="play"){if(g.bsod){if(++g.bsod.t>=BS_TOT)g.bsod=null}else update()}
   render();
+  if(g.bsod)drawBsod();
   if(state!="play")overlay();
 }
 
@@ -139,6 +140,8 @@ const PAT={
 const ultRing=(t,u,n,v=2.6,gh=1,per=14)=>{if(t==0){u.g=atan2(g.p.y-by-40,g.p.x-bx)+.5}if(t%per==0&&t<per*n){const a=u.g+(t/per)*.15;for(let i=gh+1;i<30-gh;i++){fire(a+TWO_PI*i/30,v)}}};
 const sun=(s,N)=>{const sp=TWO_PI/N,sw=sp*.65,pa=atan2(g.p.y-by-40,g.p.x-bx),a0=pa-s*(sw-.25);for(let k=0;k<N;k++){laser(bx,by+40,a0+k*sp,{bo:1,inv:1,rot:s*sw/84,wn:55,du:84})}};
 const act=l=>{g.msg=l;g.msgT=50};
+const ULTS=[0,280,620,860,1140,1470,1750,2090,2350,2650,3790,4190];
+const BSOD_FROM=4,BS_FULL=75,BS_H=18,BS_V=18,BS_FLY=32,BS_TOT=75+18+18+32;
 const ULT=[
   {n:"this just spams bullets",d:300,f:t=>{
     if(t%2==0){const sx=GW/2+sin(t*.016)*200;for(let k=0;k<3;k++){const x=random(20,GW-20);if(abs(x-sx)>58){put(x,30,PI/2,3.6,{ed:1})}}}
@@ -151,10 +154,10 @@ const ULT=[
     if(t%4==0&&t<290){const ph=.0875*(t<100?t:t<200?200-t:t-200);for(let k=0;k<4;k++){fire(ph+k*PI/2,2.6,{inv:1,col:"#a349a4"})}}
   }},
   {n:"laser",d:570,f:t=>{if(t%140==0&&t<=420){const k=t/140;sun(k%2?-1:1,2+2*k)}}},
-  {n:"adam no hit this youll be fine",d:3790,f:(t,u)=>{
-    const cx=GW/2,cy=290,S=[0,280,620,860,1140,1470,1750,2090,2350,2650];
+  {n:"adam no hit this youll be fine",d:4770,f:(t,u)=>{
+    const cx=GW/2,cy=290,kx=GW/2,ky=320,S=ULTS;
     const at=(i,o)=>t==S[i]+o,bt=(i,a,b)=>t>=S[i]+a&&t<S[i]+b,pa=()=>atan2(g.p.y-by-40,g.p.x-bx);
-    const cl=(i,r)=>{if(t==S[i]){g.bullets=[];g.las=[];act(r);return true}return false};
+    const cl=(i,r)=>{if(t==S[i]){act(r);return true}return false};
     const cross=()=>{laser(0,g.p.y,0,{wn:55,du:26,inv:0});laser(g.p.x,0,PI/2,{wn:55,du:26,inv:0})};
     const rain=(i,a,b,per,v)=>{if(bt(i,a,b)&&t%per==0)put(random(20,GW-20),30,PI/2,v,{ed:1})};
     // I: slow rings
@@ -198,21 +201,29 @@ const ULT=[
     if(at(9,20)||at(9,120)||at(9,220))laser(bx,by+40,pa(),{trk:1,bo:1,big:1,ft:t==S[9]+120?1:0,inv:0,wn:75,du:34});
     rain(9,0,240,14,2.6);
     if(at(9,280)||at(9,380)||at(9,480)){
-      const pc=constrain(round((g.p.x-40)/80),0,7),gc=constrain(pc+(random()<.5?-1:1),0,7),pr=constrain(round((g.p.y-60)/84),0,5),gr=constrain(pr+(random()<.5?-1:1),0,5);
-      for(let i=0;i<8;i++)if(i!=gc)laser(40+i*80,0,PI/2,{wn:85,du:28,inv:0});
-      for(let i=0;i<6;i++)if(i!=gr)laser(0,60+i*84,0,{wn:85,du:28,inv:0})}
+      const pc=constrain(round((g.p.x-16)/32),0,19),gc=constrain(pc+(random()<.5?-3:2),0,18),pr=constrain(round((g.p.y-40)/32),0,15),gr=constrain(pr+(random()<.5?-3:2),0,14);
+      for(let i=0;i<20;i++)if(i!=gc&&i!=gc+1)laser(16+i*32,0,PI/2,{wn:85,du:28,inv:0});
+      for(let i=0;i<16;i++)if(i!=gr&&i!=gr+1)laser(0,40+i*32,0,{wn:85,du:28,inv:0})}
     if(at(9,620))sun(1,5);
     if(at(9,780))laser(bx,by+40,pa(),{trk:1,bo:1,big:1,ft:1,inv:0,wn:75,du:34});
     if(at(9,855)){const a=pa();for(let i=3;i<26;i++)fire(a+TWO_PI*i/28,2.4)}
     if(at(9,960))sun(1,6);
     rain(9,970,1040,12,2.8);
+    // XI: the minute hand - one long sweep, the hour hand trails it, safe gap is where both stop short
+    if(cl(10,"XI")){const m0=atan2(g.p.y-ky,g.p.x-kx)-4.07;laser(kx,ky,m0,{wn:70,du:270,rot:.018,inv:0});laser(kx,ky,m0-.6,{wn:70,du:270,rot:.006,inv:0})}
+    rain(10,90,330,16,2.6);
+    // XII: twelve chimes, the gap in each ring moves one hour round the clock
+    if(cl(11,"XII"))u.cg=atan2(g.p.y-ky,g.p.x-kx)+.5;
+    if(bt(11,40,437)&&(t-S[11]-40)%36==0){const ga=u.cg+(t-S[11]-40)/36*PI/6;[...Array(25)].forEach((_,j)=>put(kx,ky,ga+TWO_PI*(j+3)/30,2.6))}
+    rain(11,40,520,18,2.6);
+    if(at(11,560))g.bullets=[];
   }}
 ];
 const finalHeal=()=>hard?.35:FINAL_HEAL;
 const gate=s=>BOSS_HP*(1-(s+1)/4);
 function startUlt(){
   g.ultDone[g.stage]=1;g.ult={t:-90};
-  g.bullets=[];g.las=[];g.well=null;g.m.cast=null;g.x.cast=null;g.pf=.1;
+  g.m.cast=null;g.x.cast=null;g.pf=.1;
   g.msg=ULT[g.stage].n;g.msgT=90;
 }
 function runUlt(){
@@ -263,7 +274,8 @@ function grab(){
 function advance(){
   g.stage++;
   g.ult=null;g.msg=(baby?BMSGS:MSGS)[g.stage];g.msgT=120;g.m.atk=50;g.m.seq=0;g.x={cast:null,atk:140,seq:0};
-  if(g.stage==4){g.bullets=[];g.las=[];g.well=null;g.shots=[];g.m.cast=null;g.bossHp=BOSS_HP*finalHeal();g.bm=g.bossHp}
+  if(g.stage>=BSOD_FROM)g.bsod={t:0};
+  if(g.stage==4){g.shots=[];g.m.cast=null;g.hp=min(MAX_HP,g.hp+MAX_HP*(BOSS_HP*finalHeal()-max(0,g.bossHp))/BOSS_HP);g.bossHp=BOSS_HP*finalHeal();g.bm=g.bossHp}
 }
 const overBtn=(mx,my)=>g.btn&&abs(mx-g.btn.x)<36&&abs(my-g.btn.y)<16;
 function update(){
@@ -286,7 +298,7 @@ function update(){
   bx=GW/2+sin(g.t*.012)*150+(g.hit?random(-3,3):0);
   by=125+sin(g.t*.05)*10;
 
-  if(g.btn&&--g.btn.life<=0){g.btn=null;g.itemT=240}
+  if(g.btn&&--g.btn.life<=0){g.btn=null;g.itemT=g.ver>=6?180:240}
   if(!g.btn&&--g.itemT<=0){g.btn={x:random(50,GW-50),y:random(70,H-40),life:300};g.itemT=360}
   if(g.dl){
     g.deg=max(0,g.deg-DL_UP/DL_T);
@@ -318,7 +330,8 @@ function update(){
   if(!g.ult){
     if(g.stage<4){
       const gt=gate(g.stage);
-      if(g.bossHp<=gt){
+      if(hard&&g.stage==3&&!g.ultDone[3]&&g.bossHp<=(gate(2)+gt)/2){startUlt()}
+      else if(g.bossHp<=gt){
         if(hard&&!g.ultDone[g.stage]){g.bossHp=gt;startUlt()}
         else{advance()}
       }
@@ -480,7 +493,50 @@ function panel(){
   fill(0);text("WASD move  click shoot",x,b0+274);
 }
 
+function drawClock(){
+  const cx=GW/2,cy=320,u=g.ult;
+  const k=u?ULTS.filter(x=>u.t>=x).length:g.ultDone[4]?12:0,
+        pr=u&&k?(u.t-ULTS[k-1])/((k<12?ULTS[k]:ULT[4].d)-ULTS[k-1]):0,
+        hT=-HALF_PI+(k%12+pr)*TWO_PI/12,
+        mT=-HALF_PI+pr*TWO_PI;
+  g.ckH=g.ckH===undefined?hT:g.ckH+atan2(sin(hT-g.ckH),cos(hT-g.ckH))*.1;
+  noFill();stroke("#ececec");strokeWeight(6);circle(cx,cy,410);
+  [...Array(60)].forEach((_,i)=>{const a=i*TWO_PI/60,r1=i%5?196:186;stroke("#e4e4e4");strokeWeight(i%5?2:4);line(cx+cos(a)*r1,cy+sin(a)*r1,cx+cos(a)*205,cy+sin(a)*205)});
+  noStroke();textAlign(CENTER,CENTER);textSize(28);
+  ["XII","I","II","III","IV","V","VI","VII","VIII","IX","X","XI"].forEach((n,i)=>{
+    const a=-HALF_PI+i*TWO_PI/12,reached=k>=(i||12),active=!!u&&k>0&&k%12==i;
+    fill(active?"#888":reached?"#bdbdbd":"#e6e6e6");text(n,cx+cos(a)*160,cy+sin(a)*160)
+  });
+  stroke("#d4d4d4");strokeWeight(12);wl(cx,cy,cx+cos(g.ckH)*105,cy+sin(g.ckH)*105);
+  strokeWeight(7);wl(cx,cy,cx+cos(mT)*165,cy+sin(mT)*165);
+  fill("#d4d4d4");circle(cx,cy,22);
+}
+function drawBlue(t){
+  noStroke();fill("#0078d7");rect(0,0,W,H);
+  fill(255);textAlign(LEFT,TOP);
+  textSize(120);text(":(",70,40);
+  textSize(24);text("Your PC ran into a problem and needs to restart.",70,215);
+  text("We're just collecting some error info, then we'll restart for you.",70,247);
+  textSize(34);text(min(100,floor(t/BS_FULL*100))+"% complete",70,300);
+  textSize(18);text("what failed: mason.exe",70,430);text("stop code: PHASE_"+(g.stage+1)+"_STARTED",70,455);
+}
+function drawBsod(){
+  const t=g.bsod.t,ez=x=>x*x*(3-2*x),
+    h=ez(constrain((t-BS_FULL)/BS_H,0,1)),
+    v=ez(constrain((t-BS_FULL-BS_H)/BS_V,0,1)),
+    f=constrain((t-BS_FULL-BS_H-BS_V)/BS_FLY,0,1),fe=f*f*f,
+    oy=h*15+fe*H*.7,ox=v*15+fe*W*.7;
+  const cols=v>0?[[0,W/2,-1],[W/2,W/2,1]]:[[0,W,0]],rows=h>0?[[0,H/2,-1],[H/2,H/2,1]]:[[0,H,0]];
+  rows.forEach(([ry,rh,sy])=>cols.forEach(([qx,qw,sx])=>{
+    push();translate(sx*ox,sy*oy);
+    drawingContext.beginPath();drawingContext.rect(qx,ry,qw,rh);drawingContext.clip();
+    drawBlue(t);
+    pop();
+  }));
+}
+
 function render(){
+  if(g.stage==4&&hard)drawClock();
   drawBoss(bx,by);
   if(g.ult&&g.ult.t<0){noFill();stroke("#ed1c24");strokeWeight(4);wc(bx,by,60-g.ult.t*1.6,3)}
   if(g.ult){noStroke();fill("#ed1c24");textAlign(CENTER,CENTER);textSize(20);text("INVINCIBLE",bx,by+BH*.5+14)}
@@ -525,14 +581,15 @@ function title(){
   textSize(20);
   text("you degrade at a rate of 4/sec (higher = weaker everything)",W/2,322);
   text("click UPDATE before it vanishes (lowers degrade, heals, unlocks buffs)",W/2,350);
-  text("purple stuff invert ur controls (up to 5 sec, then 5 sec cooldown)",W/2,378);
+  text("purple stuff invert ur controls (also dont touch mason he hurts)",W/2,378);
+  text("this is probably why im not creative design lead on game design like shrish kushwaha",W/2,406);
   if(hard){fill("#ed1c24");textSize(18);text("hard: new patterns n damage, also i didnt check if this was even possible",W/2,436)}
   if(baby){fill("#ff4d6d");textSize(18);text("baby: lock in gng",W/2,436)}
   if(frameCount%60<40){fill("#ed1c24");textSize(30);text("click to start",W/2,465)}
   stroke(0);strokeWeight(2);fill(baby?"#fff200":255);rect(30,491,240,34);
   fill(hard?"#ff7f27":255);rect(280,491,240,34);
   fill(nohit?"#ed1c24":255);rect(530,491,240,34);
-  noStroke();fill(0);textSize(17);text("baby mode: "+(baby?"ON":"off")+" (B)",150,508);text("lil harder mode: "+(hard?"ON":"off")+" (H)",400,508);text("no hit run: "+(nohit?"ON":"off")+" (N)",650,508);
+  noStroke();fill(0);textSize(17);text("baby mode: "+(baby?"ON":"off")+" (B)",150,508);text("lil harder mode: "+(hard?"ON":"off")+" (H)",400,508);text("no hit (dont even try): "+(nohit?"ON":"off")+" (N)",650,508);
 }
 
 function overlay(){
